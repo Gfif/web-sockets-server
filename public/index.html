@@ -2,11 +2,20 @@
 <html>
     <head>
         <script>
+            function sleep(ms) {
+                ms += new Date().getTime();
+                while (new Date() < ms){}
+            }
+
             var webSocket = new WebSocket('ws://localhost/echo');
 
             webSocket.onopen = function(event) {
-                alert('onopen');
-                webSocket.send("Hello Web Socket!");
+                var num = 0;
+                for (num=0;num<=10;num++) {
+                    webSocket.send("Hello Web Socket!");
+                    console.log("message is sent")
+                    sleep(1000)
+                }
             };
 
             webSocket.onmessage = function(event) {

@@ -15,13 +15,14 @@ func readHeartbeat(conn *websocket.Conn) chan int {
 	resChan := make(chan int)
 	go func() {
 		for {
-			_, _, err := conn.NextReader()
+			_, msg, err := conn.ReadMessage()
 			if err != nil {
 				log.WithError(err).Warn("heartbeat is lost")
 				return
 			}
+			log.Info(string(msg))
+			resChan <- 1
 		}
-		resChan <- 1
 	}()
 
 	return resChan
@@ -49,20 +50,24 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	hbChan := readHeartbeat(conn)
-	select {
-	case <-hbChan:
-		log.Info("Heartbeat recieved")
-	case <-time.After(time.Millisecond * 3 * time.Duration(X)):
-		log.Error("Timeout")
-		return
-	}
+	go func() {
+		for {
+			select {
+			case <-hbChan:
+				log.Info("Heartbeat recieved")
+			case <-time.After(time.Millisecond * 3 * time.Duration(X)):
+				log.Error("Timeout")
+				return
+			}
+		}
+	}()
 
-	// for _ = range time.NewTicker(time.Second * 10).C {
-	// 	if err = conn.WriteMessage(1, []byte("Some message")); err != nil {
-	// 		log.WithError(err).Error("Failed to write message")
-	// 		return
-	// 	}
-	// }
+	for _ = range time.NewTicker(time.Second * 5).C {
+		if err = conn.WriteMessage(1, []byte("Some message")); err != nil {
+			log.WithError(err).Error("Failed to write message")
+			return
+		}
+	}
 }
 
 func main() {
